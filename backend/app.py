@@ -1,28 +1,23 @@
 from flask import Flask, jsonify, request, send_from_directory
-from deforestation_api import fetch_deforestation_data
 
-# Flask app initialization
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='static', static_url_path='')
 
-# Route to serve the index.html file
+# Serve index.html from static folder
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
 
-# API route to fetch deforestation data
+# Other API routes
 @app.route('/get_deforestation_data')
 def get_deforestation_data():
     year = request.args.get('year')
-
-    if not year:
-        return jsonify({"error": "Year parameter is missing"}), 400
-
-    # Fetch the deforestation data (mock data in this case)
-    try:
-        data = fetch_deforestation_data(start_year=year, end_year=year, region='Amazon')
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500  # Handle any errors
+    # Mocked response for testing
+    data = {
+        "deforestation_areas": [
+            {"lat": -3.4653, "lon": -62.2159, "deforested_hectares": 1200}
+        ]
+    }
+    return jsonify(data)
 
 if __name__ == '__main__':
     app.run(debug=True)
