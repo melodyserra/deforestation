@@ -1,97 +1,90 @@
 <!doctype html>
-<html>
+<html lang="en">
     <head>
-        <title>Deforestation Tracker</title>
-        <link
-            rel="stylesheet"
-            href="https://unpkg.com/leaflet/dist/leaflet.css"
-        />
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Deforestation Visualization</title>
         <style>
+            body {
+                font-family: Arial, sans-serif;
+            }
             #map {
-                height: 600px;
+                height: 500px;
+                width: 100%;
+            }
+            #year-slider {
+                width: 100%;
+                margin: 20px 0;
+            }
+            #year-label {
+                font-size: 18px;
             }
         </style>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css"
+        />
     </head>
     <body>
         <h1>Deforestation Over Time</h1>
-        <div id="map"></div>
+
+        <label id="year-label">Year: 2000</label>
         <input
             type="range"
-            id="yearSlider"
             min="2000"
             max="2023"
-            value="2023"
-            step="1"
-            oninput="updateYear(this.value)"
+            value="2000"
+            id="year-slider"
         />
-        <p>Year: <span id="yearDisplay">2023</span></p>
 
-        <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+        <div id="map"></div>
+
         <script>
             // Initialize the map
-            var map = L.map("map").setView([0, 0], 2); // Set the default view to the globe
+            const map = L.map("map").setView([-3.4653, -62.2159], 4);
 
-            // Add a tile layer (base map)
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                attribution: "Map data © OpenStreetMap contributors",
+                maxZoom: 18,
+                attribution: "&copy; OpenStreetMap contributors",
             }).addTo(map);
 
-            var deforestationLayer = L.layerGroup().addTo(map); // Layer for deforestation points
+            // Function to update the map based on data
+            function updateMap(data) {
+                // Clear existing layers
+                if (window.markers) {
+                    window.markers.forEach((marker) => map.removeLayer(marker));
+                }
 
-            // Update the year and fetch data when the slider changes
-            function updateYear(year) {
-                document.getElementById("yearDisplay").textContent = year; // Update year display
+                // Add new markers for deforested areas
+                window.markers = data.data.map((area) => {
+                    const marker = L.marker([area.lat, area.lon])
+                        .bindPopup(`Deforestation Alert: ${area.alert_date}`)
+                        .addTo(map);
+                    return marker;
+                });
+            }
 
-                // Fetch data from the backend
+            // Fetch deforestation data when the slider is moved
+            document.getElementById("year-slider").oninput = function () {
+                const year = this.value;
+                document.getElementById("year-label").innerText =
+                    "Year: " + year;
+
                 fetch(`/get_deforestation_data?year=${year}`)
-                    .then((response) => {
-                        if (!response.ok) {
-                            throw new Error("Network response was not ok");
-                        }
-                        return response.json();
-                    })
+                    .then((response) => response.json())
                     .then((data) => {
-                        console.log("Fetched Data:", data); // Debugging line
-                        updateMap(data); // Call a function to update the map
+                        if (data.error) {
+                            alert("Error fetching data: " + data.error);
+                        } else {
+                            updateMap(data);
+                        }
                     })
                     .catch((error) => {
                         console.error("Error fetching data:", error);
                         alert("Error fetching data: " + error.message);
                     });
-            }
-
-            // Function to update the map with deforestation data
-            function updateMap(data) {
-                deforestationLayer.clearLayers(); // Clear any existing deforestation points
-
-                // Check if data has deforestation areas
-                if (
-                    data.deforestation_areas &&
-                    data.deforestation_areas.length > 0
-                ) {
-                    // Add new deforestation data
-                    data.deforestation_areas.forEach((area) => {
-                        console.log(
-                            "Rendering deforestation at:",
-                            area.lat,
-                            area.lon,
-                        ); // Debugging line
-                        L.circle([area.lat, area.lon], {
-                            color: "red",
-                            radius: area.deforested_hectares * 100, // Scaled for visibility
-                        }).addTo(deforestationLayer);
-                    });
-
-                    // Zoom to the first deforestation point (adjust the zoom level as needed)
-                    let firstArea = data.deforestation_areas[0];
-                    map.setView([firstArea.lat, firstArea.lon], 5); // Zoom level 5 for regional view
-                } else {
-                    console.log("No deforestation data for this year.");
-                }
-            }
-
-            // Initial load for the current year (2023 by default)
-            updateYear(2023);
+            };
         </script>
     </body>
 </html>
